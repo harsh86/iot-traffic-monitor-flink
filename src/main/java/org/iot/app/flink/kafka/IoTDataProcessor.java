@@ -16,6 +16,7 @@ import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer08;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer081;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer082;
+import org.apache.flink.streaming.util.serialization.JSONDeserializationSchema;
 import org.apache.flink.streaming.util.serialization.JSONKeyValueDeserializationSchema;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 import org.iot.app.flink.model.IoTData;
@@ -35,7 +36,7 @@ public class IoTDataProcessor {
         // set up the execution environment
 
         FlinkKafkaConsumer08<ObjectNode> kafkaConsumer = new FlinkKafkaConsumer08<>("iot-data-event-flink",
-                new JSONKeyValueDeserializationSchema(true),
+                new JSONDeserializationSchema(),
                 properties);
 
         kafkaConsumer.assignTimestampsAndWatermarks(new AscendingTimestampExtractor<ObjectNode>() {
