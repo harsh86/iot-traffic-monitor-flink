@@ -1,9 +1,11 @@
 package org.kafka.producer;
 
 
-import org.apache.log4j.Logger;
+import org.iot.app.flink.kafka.IoTDataProcessor;
 import org.iot.app.flink.model.IoTData;
 import org.kafka.utils.PropertyFileReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,8 +27,8 @@ import kafka.producer.ProducerConfig;
  *
  */
 public class IoTDataProducer {
-	
-	private static final Logger logger = Logger.getLogger(IoTDataProducer.class);
+
+	private static final Logger logger = LoggerFactory.getLogger(IoTDataProducer.class);
 
 	public static void main(String[] args) throws Exception {
 		//read config file
