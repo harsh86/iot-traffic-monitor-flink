@@ -19,6 +19,7 @@ import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExt
 import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
+import org.iot.app.flink.model.AggregateKey;
 import org.iot.app.flink.model.IoTData;
 
 import java.text.ParseException;
@@ -93,7 +94,16 @@ public class IotDataStreamUtils {
             }
         };
     }
-
+    public static KeySelector<Tuple2<AggregateKey, Long>, AggregateKey> AggregateKeySelector() {
+        return new KeySelector<Tuple2<AggregateKey, Long>, AggregateKey>() {
+            @Override
+            public AggregateKey getKey
+                    (Tuple2<AggregateKey, Long> input) throws Exception {
+                return
+                        input.f0;
+            }
+        };
+    }
 
 
 }

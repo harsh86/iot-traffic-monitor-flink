@@ -350,7 +350,7 @@ under the License.
 
 
         <!-- If you want to use Java 8 Lambda Expressions uncomment the following lines -->
-        <!--
+
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -409,7 +409,7 @@ under the License.
                 </plugin>
             </plugins>
         </pluginManagement>
-        -->
+
 
     </build>
 </project>

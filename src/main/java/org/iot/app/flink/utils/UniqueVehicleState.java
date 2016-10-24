@@ -33,7 +33,6 @@ public class UniqueVehicleState extends RichMapFunction<IoTData, Tuple2<IoTData,
 
     @Override
     public Tuple2<IoTData,Boolean> map(IoTData ioTData) throws Exception {
-        System.out.println(" Vehicleid  ::"+ioTData.getVehicleId());
         if(!Iterables.contains(uniqueVehicleId.get(),ioTData.getVehicleId())){
             uniqueVehicleId.add(ioTData.getVehicleId());
             return new Tuple2(ioTData,true);

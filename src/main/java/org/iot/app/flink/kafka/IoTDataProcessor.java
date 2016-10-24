@@ -2,6 +2,7 @@ package org.iot.app.flink.kafka;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple;
@@ -12,9 +13,11 @@ import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.windowing.windows.GlobalWindow;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer08;
 import org.apache.flink.streaming.util.serialization.JSONDeserializationSchema;
+import org.iot.app.flink.model.AggregateKey;
 import org.iot.app.flink.model.IoTData;
 import org.iot.app.flink.utils.IotDataStreamUtils;
 import org.iot.app.flink.utils.UniqueVehicleState;
@@ -40,17 +43,38 @@ public class IoTDataProcessor {
         SingleOutputStreamOperator<IoTData> nonFilteredIotDataStream = env.addSource(kafkaConsumer)
                                                                           .map(IotDataStreamUtils.streamToIotDataMap());
         //partition Stream by vehicle Id for deduplication.
-        KeyedStream<IoTData, String> nonFilteredKeyedStream = nonFilteredIotDataStream.keyBy(IotDataStreamUtils
-                .iotDatakeySelector());
+        SingleOutputStreamOperator<IoTData> reduceKeyedStream = nonFilteredIotDataStream.keyBy(IotDataStreamUtils.iotDatakeySelector())
+                                                                                        .reduce((a, b) -> a);
         // Paasing Keyed stream thorugh a stateful mapper to dedup duplicate event from same vehicle Id.
-        SingleOutputStreamOperator<Tuple2<IoTData, Boolean>> dedupedKeyedStream = nonFilteredKeyedStream.map(new
-                UniqueVehicleState());
+        SingleOutputStreamOperator<Tuple2<IoTData, Boolean>> dedupedKeyedStream = reduceKeyedStream.keyBy(IotDataStreamUtils.iotDatakeySelector())
+                                                                                                   .map(new
+                                                                                                           UniqueVehicleState());
 
-        SingleOutputStreamOperator<IoTData> filteredIotDataStream = dedupedKeyedStream.filter(p -> p.f1)
-                                                                                      .map(p -> p.f0);
+        SingleOutputStreamOperator<Tuple2<IoTData, Boolean>> uniqueVehicleStreams = dedupedKeyedStream.filter(p -> p.f1);
+        SingleOutputStreamOperator<IoTData> filteredIotDataStream = uniqueVehicleStreams
+                .map(p -> p.f0);
+        processTotalTrafficData(filteredIotDataStream);
+
         env.execute("IOT kafka cassandra sample");
 
     }
+
+    public static void processTotalTrafficData(SingleOutputStreamOperator<IoTData> filteredIotDataStream) {
+        SingleOutputStreamOperator<Tuple2<AggregateKey, Long>> groupedStrem = filteredIotDataStream.map(p ->
+                new Tuple2<AggregateKey, Long>(new AggregateKey(p.getRouteId(), p.getVehicleType()), new Long(1)))
+                                                                                                   .keyBy
+                                                                                                           (IotDataStreamUtils.AggregateKeySelector())
+                                                                                                   .reduce((a, b) -> new Tuple2(a.f0, a.f1.longValue() + b.f1.longValue()));
+
+
+        groupedStrem.map(p -> {
+            System.out.println("Total Count for Key::: " + p.f0.toString() + " Count:: " + p.f1.toString());
+            return p;
+        });
+
+
+    }
+
 
 
 }
