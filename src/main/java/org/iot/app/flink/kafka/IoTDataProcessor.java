@@ -10,6 +10,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.AllWindowedStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.datastream.WindowedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.apache.flink.streaming.api.windowing.time.Time;
@@ -54,27 +55,42 @@ public class IoTDataProcessor {
         SingleOutputStreamOperator<IoTData> filteredIotDataStream = uniqueVehicleStreams
                 .map(p -> p.f0);
         processTotalTrafficData(filteredIotDataStream);
-
+        processWindowTrafficData(filteredIotDataStream);
         env.execute("IOT kafka cassandra sample");
 
     }
 
     public static void processTotalTrafficData(SingleOutputStreamOperator<IoTData> filteredIotDataStream) {
-        SingleOutputStreamOperator<Tuple2<AggregateKey, Long>> groupedStrem = filteredIotDataStream.map(p ->
-                new Tuple2<AggregateKey, Long>(new AggregateKey(p.getRouteId(), p.getVehicleType()), new Long(1)))
-                                                                                                   .keyBy
-                                                                                                           (IotDataStreamUtils.AggregateKeySelector())
-                                                                                                   .reduce((a, b) -> new Tuple2(a.f0, a.f1.longValue() + b.f1.longValue()));
-
+        SingleOutputStreamOperator<Tuple2<AggregateKey, Long>> groupedStrem =
+                tokeyedStreamForCounting(filteredIotDataStream).reduce((a, b) -> new Tuple2(a.f0, a.f1.longValue() + b.f1.longValue()));
 
         groupedStrem.map(p -> {
             System.out.println("Total Count for Key::: " + p.f0.toString() + " Count:: " + p.f1.toString());
             return p;
         });
+    }
 
+    public static void processWindowTrafficData(SingleOutputStreamOperator<IoTData> filteredIotDataStream) {
+        //Build a tumble Windowed keyedStream of 30 sec.
+        WindowedStream<Tuple2<AggregateKey, Long>, AggregateKey, TimeWindow> tumbleWindowedStream =
+                tokeyedStreamForCounting(filteredIotDataStream).timeWindow(Time.seconds(30));
+        SingleOutputStreamOperator<Tuple2<AggregateKey, Long>> reducedWindowStream = tumbleWindowedStream.reduce((a, b) -> new Tuple2(a.f0, a.f1.longValue() + b.f1.longValue()));
 
+        reducedWindowStream.map(p -> {
+            System.out.println("Total Count  per Window for Key::: " + p.f0.toString() + " Count:: " + p.f1.toString
+                    ());
+            return p;
+        });
+    }
+
+    private static KeyedStream<Tuple2<AggregateKey, Long>, AggregateKey> tokeyedStreamForCounting(SingleOutputStreamOperator<IoTData> filteredIotDataStream) {
+        return filteredIotDataStream.map(p ->
+                new Tuple2<AggregateKey, Long>(new AggregateKey(p.getRouteId(), p.getVehicleType()), new Long(1)))
+                                    .keyBy
+                                            (IotDataStreamUtils.AggregateKeySelector());
     }
 
 
-
 }
+
+
