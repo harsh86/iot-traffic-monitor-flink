@@ -15,5 +15,10 @@ bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 -
 ```
 ###Overview
 
+1.IoTDataProducer : This is a kafka producer which will publish mock IOT traffic monitoring signal into kafka topic.
 
+2.IotTrafficMonitoringApp : Driver program which will execute call IoTDataProcessor.proces()
+
+3.IoTDataProcessor: Function that createsa kafka consumer source and prepares Stream for processing. Also has window
+based stream processing and Stateful stream counting.
 
