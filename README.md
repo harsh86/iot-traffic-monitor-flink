@@ -22,3 +22,8 @@ bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 -
 3.IoTDataProcessor: Function that createsa kafka consumer source and prepares Stream for processing. Also has window
 based stream processing and Stateful stream counting.
 
+## Run Example
+
+```javascript
+flink run --jarfile <path_to_jar>/iot-traffic-monitor-flink-0.1.jar
+```
